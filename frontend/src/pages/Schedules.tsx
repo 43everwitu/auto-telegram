@@ -17,6 +17,7 @@ export default function Schedules() {
   const [windowStart, setWindowStart] = useState("08:00");
   const [windowEnd, setWindowEnd] = useState("22:00");
   const [minGap, setMinGap] = useState("30");
+  const [error, setError] = useState<string | null>(null);
 
   async function refresh() {
     setSchedules(await apiGet<ScheduleConfig[]>("/api/schedules"));
@@ -29,24 +30,35 @@ export default function Schedules() {
   async function handleSubmit(e: FormEvent) {
     e.preventDefault();
     const id = Number(targetId);
-    await apiPut(`/api/schedules/${id}`, {
-      target_id: id,
-      messages_per_day: Number(messagesPerDay),
-      window_start: windowStart,
-      window_end: windowEnd,
-      min_gap_minutes: Number(minGap),
-    });
-    await refresh();
+    try {
+      await apiPut(`/api/schedules/${id}`, {
+        target_id: id,
+        messages_per_day: Number(messagesPerDay),
+        window_start: windowStart,
+        window_end: windowEnd,
+        min_gap_minutes: Number(minGap),
+      });
+      setError(null);
+      await refresh();
+    } catch {
+      setError("Failed to save schedule");
+    }
   }
 
   async function handleDelete(target_id: number) {
-    await apiDelete(`/api/schedules/${target_id}`);
-    await refresh();
+    try {
+      await apiDelete(`/api/schedules/${target_id}`);
+      setError(null);
+      await refresh();
+    } catch {
+      setError("Failed to delete schedule");
+    }
   }
 
   return (
     <div>
       <h1>Schedules</h1>
+      {error && <p role="alert">{error}</p>}
       <form onSubmit={handleSubmit}>
         <input placeholder="Target ID" value={targetId} onChange={(e) => setTargetId(e.target.value)} />
         <input placeholder="Messages/day" value={messagesPerDay} onChange={(e) => setMessagesPerDay(e.target.value)} />

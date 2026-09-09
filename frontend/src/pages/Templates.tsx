@@ -12,6 +12,7 @@ export default function Templates() {
   const [templates, setTemplates] = useState<Template[]>([]);
   const [body, setBody] = useState("");
   const [targetId, setTargetId] = useState("");
+  const [error, setError] = useState<string | null>(null);
 
   async function refresh() {
     setTemplates(await apiGet<Template[]>("/api/templates"));
@@ -24,22 +25,33 @@ export default function Templates() {
   async function handleSubmit(e: FormEvent) {
     e.preventDefault();
     const parsedTargetId = targetId ? Number(targetId) : null;
-    await apiPost("/api/templates", {
-      body, is_override: parsedTargetId !== null, target_id: parsedTargetId,
-    });
-    setBody("");
-    setTargetId("");
-    await refresh();
+    try {
+      await apiPost("/api/templates", {
+        body, is_override: parsedTargetId !== null, target_id: parsedTargetId,
+      });
+      setBody("");
+      setTargetId("");
+      setError(null);
+      await refresh();
+    } catch {
+      setError("Failed to add template");
+    }
   }
 
   async function handleDelete(id: number) {
-    await apiDelete(`/api/templates/${id}`);
-    await refresh();
+    try {
+      await apiDelete(`/api/templates/${id}`);
+      setError(null);
+      await refresh();
+    } catch {
+      setError("Failed to delete template");
+    }
   }
 
   return (
     <div>
       <h1>Templates</h1>
+      {error && <p role="alert">{error}</p>}
       <form onSubmit={handleSubmit}>
         <textarea placeholder="Message body (HTML)" value={body} onChange={(e) => setBody(e.target.value)} />
         <input

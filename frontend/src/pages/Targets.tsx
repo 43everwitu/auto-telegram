@@ -16,6 +16,7 @@ export default function Targets() {
   const [chatId, setChatId] = useState("");
   const [type, setType] = useState("channel");
   const [title, setTitle] = useState("");
+  const [error, setError] = useState<string | null>(null);
 
   async function refresh() {
     setTargets(await apiGet<Target[]>("/api/targets"));
@@ -27,22 +28,33 @@ export default function Targets() {
 
   async function handleSubmit(e: FormEvent) {
     e.preventDefault();
-    await apiPost("/api/targets", {
-      account_id: Number(accountId), telegram_chat_id: chatId, type, title,
-    });
-    setChatId("");
-    setTitle("");
-    await refresh();
+    try {
+      await apiPost("/api/targets", {
+        account_id: Number(accountId), telegram_chat_id: chatId, type, title,
+      });
+      setChatId("");
+      setTitle("");
+      setError(null);
+      await refresh();
+    } catch {
+      setError("Failed to add target");
+    }
   }
 
   async function handleDelete(id: number) {
-    await apiDelete(`/api/targets/${id}`);
-    await refresh();
+    try {
+      await apiDelete(`/api/targets/${id}`);
+      setError(null);
+      await refresh();
+    } catch {
+      setError("Failed to delete target");
+    }
   }
 
   return (
     <div>
       <h1>Targets</h1>
+      {error && <p role="alert">{error}</p>}
       <form onSubmit={handleSubmit}>
         <input placeholder="Account ID" value={accountId} onChange={(e) => setAccountId(e.target.value)} />
         <input placeholder="Chat ID" value={chatId} onChange={(e) => setChatId(e.target.value)} />
