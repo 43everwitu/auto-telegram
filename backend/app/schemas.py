@@ -1,5 +1,5 @@
 from datetime import datetime
-from pydantic import BaseModel
+from pydantic import BaseModel, Field, model_validator
 
 
 class LoginRequest(BaseModel):
@@ -65,10 +65,16 @@ class TemplateOut(TemplateCreate):
 
 class ScheduleConfigCreate(BaseModel):
     target_id: int
-    messages_per_day: int
-    window_start: str
-    window_end: str
-    min_gap_minutes: int
+    messages_per_day: int = Field(ge=1)
+    window_start: str = Field(pattern=r"^([01]\d|2[0-3]):[0-5]\d$")
+    window_end: str = Field(pattern=r"^([01]\d|2[0-3]):[0-5]\d$")
+    min_gap_minutes: int = Field(ge=0)
+
+    @model_validator(mode="after")
+    def check_window_order(self):
+        if self.window_end <= self.window_start:
+            raise ValueError("window_end must be after window_start")
+        return self
 
 
 class ScheduleConfigOut(ScheduleConfigCreate):

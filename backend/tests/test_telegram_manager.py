@@ -1,6 +1,8 @@
 from unittest.mock import AsyncMock, MagicMock, patch
 import pytest
 from app.telegram_manager import TelegramAccountManager
+from app.models import Account
+from app.crypto import encrypt_session
 
 
 @pytest.mark.asyncio
@@ -48,6 +50,45 @@ async def test_get_client_returns_client_used_at_login(db_session):
         account = await manager.login_with_session_string(db_session, "existing-session")
 
     assert manager.get_client(account.id) is fake_client
+
+
+@pytest.mark.asyncio
+async def test_ensure_client_returns_cached_client(db_session):
+    manager = TelegramAccountManager()
+    cached_client = AsyncMock()
+    manager._active_clients[1] = cached_client
+
+    result = await manager.ensure_client(db_session, 1)
+
+    assert result is cached_client
+
+
+@pytest.mark.asyncio
+async def test_ensure_client_decrypts_and_connects_when_not_cached(db_session):
+    account = Account(
+        id=1, phone="1234567890", session_string=encrypt_session("raw-session-string"), status="active",
+    )
+    db_session.add(account)
+    db_session.commit()
+
+    fake_client = AsyncMock()
+    with patch("app.telegram_manager.TelegramClient", return_value=fake_client) as client_cls, \
+            patch("app.telegram_manager.StringSession") as string_session_cls:
+        manager = TelegramAccountManager()
+        result = await manager.ensure_client(db_session, account.id)
+
+    string_session_cls.assert_called_once_with("raw-session-string")
+    client_cls.assert_called_once()
+    fake_client.connect.assert_awaited_once()
+    assert result is fake_client
+    assert manager._active_clients[account.id] is fake_client
+
+
+@pytest.mark.asyncio
+async def test_ensure_client_raises_for_missing_account(db_session):
+    manager = TelegramAccountManager()
+    with pytest.raises(ValueError):
+        await manager.ensure_client(db_session, 999)
 
 
 @pytest.mark.asyncio

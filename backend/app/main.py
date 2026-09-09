@@ -1,9 +1,12 @@
+from dotenv import load_dotenv
+
+load_dotenv()
+
 from fastapi import FastAPI
 from fastapi.middleware.cors import CORSMiddleware
 from app.db import init_db
 from app.routers import auth, accounts, targets, templates, schedules, logs
 from app.scheduler import scheduler, schedule_all_targets_for_today
-from app.routers.accounts import manager as telegram_manager
 
 app = FastAPI()
 app.add_middleware(
@@ -28,7 +31,7 @@ def on_startup():
         scheduler.start()
     scheduler.add_job(
         schedule_all_targets_for_today, "cron", hour=0, minute=5,
-        args=[telegram_manager], id="daily-schedule-generator", replace_existing=True,
+        id="daily-schedule-generator", replace_existing=True,
     )
 
 

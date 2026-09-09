@@ -1,4 +1,7 @@
 import os
+
+os.environ["DATABASE_URL"] = "sqlite:///:memory:"
+
 import bcrypt
 import pytest
 from cryptography.fernet import Fernet

@@ -3,7 +3,7 @@ from telethon import TelegramClient
 from telethon.sessions import StringSession
 from sqlalchemy.orm import Session
 from app.models import Account
-from app.crypto import encrypt_session
+from app.crypto import encrypt_session, decrypt_session
 
 API_ID = int(os.environ["TELEGRAM_API_ID"])
 API_HASH = os.environ["TELEGRAM_API_HASH"]
@@ -39,6 +39,18 @@ class TelegramAccountManager:
 
     def get_client(self, account_id: int) -> TelegramClient:
         return self._active_clients[account_id]
+
+    async def ensure_client(self, db: Session, account_id: int) -> TelegramClient:
+        if account_id in self._active_clients:
+            return self._active_clients[account_id]
+        account = db.get(Account, account_id)
+        if account is None:
+            raise ValueError(f"Account {account_id} not found")
+        decrypted = decrypt_session(account.session_string)
+        client = TelegramClient(StringSession(decrypted), API_ID, API_HASH)
+        await client.connect()
+        self._active_clients[account_id] = client
+        return client
 
     async def start_otp_login(self, phone: str) -> str:
         client = TelegramClient(StringSession(), API_ID, API_HASH)

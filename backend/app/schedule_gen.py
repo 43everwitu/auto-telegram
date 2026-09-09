@@ -20,9 +20,6 @@ def generate_daily_times(
             f"have {window_minutes}"
         )
 
-    max_attempts = 500
-    for _ in range(max_attempts):
-        offsets = sorted(random.randint(0, window_minutes) for _ in range(x))
-        if all(offsets[i + 1] - offsets[i] >= min_gap_minutes for i in range(x - 1)):
-            return [start_dt + timedelta(minutes=o) for o in offsets]
-    raise RuntimeError("Could not generate a valid schedule after max attempts")
+    reduced_range = window_minutes - (x - 1) * min_gap_minutes
+    offsets = sorted(random.randint(0, reduced_range) for _ in range(x))
+    return [start_dt + timedelta(minutes=offsets[i] + i * min_gap_minutes) for i in range(x)]

@@ -12,32 +12,46 @@ from app.premium_emoji import build_message_with_entities
 scheduler = AsyncIOScheduler(jobstores={"default": SQLAlchemyJobStore(url=DATABASE_URL)})
 
 
-def schedule_all_targets_for_today(manager):
+def schedule_all_targets_for_today():
     db = SessionLocal()
     try:
         targets = db.query(Target).filter(Target.active.is_(True)).all()
         for target in targets:
-            config = target.schedule_config
-            if config is None:
-                continue
-            times = generate_daily_times(
-                config.messages_per_day, config.window_start, config.window_end,
-                config.min_gap_minutes, date.today(),
-            )
-            for i, run_time in enumerate(times):
-                if run_time < datetime.now():
+            try:
+                config = target.schedule_config
+                if config is None:
                     continue
-                scheduler.add_job(
-                    send_job, "date", run_date=run_time,
-                    args=[target.id, manager],
-                    id=f"send-{target.id}-{date.today()}-{i}",
-                    replace_existing=True,
+                times = generate_daily_times(
+                    config.messages_per_day, config.window_start, config.window_end,
+                    config.min_gap_minutes, date.today(),
                 )
+                for i, run_time in enumerate(times):
+                    if run_time < datetime.now():
+                        continue
+                    scheduler.add_job(
+                        send_job, "date", run_date=run_time,
+                        args=[target.id],
+                        id=f"send-{target.id}-{date.today()}-{i}",
+                        replace_existing=True,
+                    )
+            except Exception as e:
+                print(f"schedule_all_targets_for_today: failed to schedule target {target.id}: {e}")
     finally:
         db.close()
 
 
-async def send_job(target_id: int, manager, retry: bool = False):
+def cancel_jobs_for_account(db, account_id):
+    targets = db.query(Target).filter(Target.account_id == account_id).all()
+    for target in targets:
+        prefix = f"send-{target.id}-"
+        for job in scheduler.get_jobs():
+            if job.id.startswith(prefix):
+                scheduler.remove_job(job.id)
+
+
+async def send_job(target_id: int, retry: bool = False):
+    from app.routers.accounts import manager
+
     db = SessionLocal()
     try:
         target = db.get(Target, target_id)
@@ -48,9 +62,9 @@ async def send_job(target_id: int, manager, retry: bool = False):
         except ValueError:
             return
 
+        account = db.get(Account, target.account_id)
         try:
-            account = db.get(Account, target.account_id)
-            client = manager.get_client(target.account_id)
+            client = await manager.ensure_client(db, target.account_id)
             text, entities = build_message_with_entities(
                 template.body, bool(account and account.telegram_premium)
             )
@@ -64,8 +78,9 @@ async def send_job(target_id: int, manager, retry: bool = False):
         except FloodWaitError as e:
             scheduler.add_job(
                 send_job, "date", run_date=datetime.now() + timedelta(seconds=e.seconds),
-                args=[target_id, manager],
+                args=[target_id],
             )
+            cancel_jobs_for_account(db, target.account_id)
             db.add(SendLog(
                 target_id=target_id, template_id=template.id, status="failed",
                 error_message=f"FloodWait {e.seconds}s, rescheduled",
@@ -73,6 +88,7 @@ async def send_job(target_id: int, manager, retry: bool = False):
         except (UserDeactivatedBanError, AuthKeyUnregisteredError) as e:
             if account:
                 account.status = "banned"
+            cancel_jobs_for_account(db, target.account_id)
             db.add(SendLog(target_id=target_id, template_id=template.id, status="failed", error_message=str(e)))
         except ChatWriteForbiddenError as e:
             target.active = False
@@ -81,7 +97,7 @@ async def send_job(target_id: int, manager, retry: bool = False):
             if not retry:
                 scheduler.add_job(
                     send_job, "date", run_date=datetime.now() + timedelta(minutes=5),
-                    args=[target_id, manager], kwargs={"retry": True},
+                    args=[target_id], kwargs={"retry": True},
                 )
             db.add(SendLog(target_id=target_id, template_id=template.id, status="failed", error_message=str(e)))
         db.commit()

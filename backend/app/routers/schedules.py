@@ -21,10 +21,11 @@ def upsert_schedule(target_id: int, req: ScheduleConfigCreate, db: Session = Dep
         existing.window_start = req.window_start
         existing.window_end = req.window_end
         existing.min_gap_minutes = req.min_gap_minutes
+        existing.target_id = target_id
         db.commit()
         db.refresh(existing)
         return existing
-    config = ScheduleConfig(**req.model_dump())
+    config = ScheduleConfig(**req.model_dump(exclude={"target_id"}), target_id=target_id)
     db.add(config)
     db.commit()
     db.refresh(config)
