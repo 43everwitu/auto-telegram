@@ -1,0 +1,13 @@
+fastapi
+uvicorn[standard]
+sqlalchemy
+telethon
+apscheduler
+cryptography
+bcrypt
+pyjwt
+pydantic
+python-dotenv
+pytest
+pytest-asyncio
+httpx
