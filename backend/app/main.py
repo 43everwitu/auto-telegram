@@ -1,7 +1,7 @@
 from fastapi import FastAPI
 from fastapi.middleware.cors import CORSMiddleware
 from app.db import init_db
-from app.routers import auth, accounts, targets
+from app.routers import auth, accounts, targets, templates
 
 app = FastAPI()
 app.add_middleware(
@@ -10,6 +10,7 @@ app.add_middleware(
 app.include_router(auth.router)
 app.include_router(accounts.router)
 app.include_router(targets.router)
+app.include_router(templates.router)
 
 
 @app.on_event("startup")
