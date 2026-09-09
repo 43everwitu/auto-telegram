@@ -77,8 +77,13 @@ class ScheduleConfigCreate(BaseModel):
         return self
 
 
-class ScheduleConfigOut(ScheduleConfigCreate):
+class ScheduleConfigOut(BaseModel):
     id: int
+    target_id: int
+    messages_per_day: int
+    window_start: str
+    window_end: str
+    min_gap_minutes: int
 
     class Config:
         from_attributes = True

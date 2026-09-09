@@ -41,12 +41,15 @@ def schedule_all_targets_for_today():
 
 
 def cancel_jobs_for_account(db, account_id):
-    targets = db.query(Target).filter(Target.account_id == account_id).all()
-    for target in targets:
-        prefix = f"send-{target.id}-"
-        for job in scheduler.get_jobs():
-            if job.id.startswith(prefix):
-                scheduler.remove_job(job.id)
+    try:
+        targets = db.query(Target).filter(Target.account_id == account_id).all()
+        for target in targets:
+            prefix = f"send-{target.id}-"
+            for job in scheduler.get_jobs():
+                if job.id.startswith(prefix):
+                    scheduler.remove_job(job.id)
+    except Exception as e:
+        print(f"cancel_jobs_for_account: failed to cancel jobs for account {account_id}: {e}")
 
 
 async def send_job(target_id: int, retry: bool = False):
