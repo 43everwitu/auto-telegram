@@ -2,6 +2,8 @@ from fastapi import FastAPI
 from fastapi.middleware.cors import CORSMiddleware
 from app.db import init_db
 from app.routers import auth, accounts, targets, templates, schedules, logs
+from app.scheduler import scheduler, schedule_all_targets_for_today
+from app.routers.accounts import manager as telegram_manager
 
 app = FastAPI()
 app.add_middleware(
@@ -18,3 +20,23 @@ app.include_router(logs.router)
 @app.on_event("startup")
 def on_startup():
     init_db()
+    if not scheduler.running:
+        # `scheduler` is a module-level singleton, so guard against calling
+        # start() twice in the same process (e.g. each api_client fixture
+        # instantiates its own TestClient(app), re-firing this startup
+        # event) — APScheduler raises SchedulerAlreadyRunningError otherwise.
+        scheduler.start()
+    scheduler.add_job(
+        schedule_all_targets_for_today, "cron", hour=0, minute=5,
+        args=[telegram_manager], id="daily-schedule-generator", replace_existing=True,
+    )
+
+
+@app.on_event("shutdown")
+def on_shutdown():
+    # AsyncIOScheduler binds to the event loop that is running when start()
+    # is called; shut it down here so a later startup (e.g. a new test's
+    # TestClient, which runs on its own event loop) rebinds cleanly instead
+    # of scheduling callbacks on an already-closed loop.
+    if scheduler.running:
+        scheduler.shutdown(wait=False)
