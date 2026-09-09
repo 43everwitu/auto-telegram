@@ -24,3 +24,28 @@ def db_session():
     session = Session()
     yield session
     session.close()
+
+
+from fastapi.testclient import TestClient
+
+
+@pytest.fixture()
+def api_client():
+    from app.main import app
+    from app.db import get_db
+
+    engine = create_engine("sqlite:///:memory:", connect_args={"check_same_thread": False})
+    Base.metadata.create_all(bind=engine)
+    Session = sessionmaker(bind=engine)
+
+    def override_get_db():
+        db = Session()
+        try:
+            yield db
+        finally:
+            db.close()
+
+    app.dependency_overrides[get_db] = override_get_db
+    with TestClient(app) as client:
+        yield client
+    app.dependency_overrides.clear()
