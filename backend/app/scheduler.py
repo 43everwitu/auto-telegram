@@ -54,7 +54,12 @@ async def send_job(target_id: int, manager, retry: bool = False):
             text, entities = build_message_with_entities(
                 template.body, bool(account and account.telegram_premium)
             )
-            await client.send_message(target.telegram_chat_id, text, formatting_entities=entities or None)
+            # parse_mode="html" only applies when formatting_entities is None (no custom emoji
+            # markup in the template); telethon ignores parse_mode when formatting_entities is
+            # non-empty, so HTML tags in a template that also has [emoji:...] markup won't render.
+            await client.send_message(
+                target.telegram_chat_id, text, parse_mode="html", formatting_entities=entities or None
+            )
             db.add(SendLog(target_id=target_id, template_id=template.id, status="success"))
         except FloodWaitError as e:
             scheduler.add_job(
