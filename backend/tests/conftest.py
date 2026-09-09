@@ -4,6 +4,7 @@ import pytest
 from cryptography.fernet import Fernet
 from sqlalchemy import create_engine
 from sqlalchemy.orm import sessionmaker
+from sqlalchemy.pool import StaticPool
 from app.models import Base
 
 os.environ.setdefault("TELEGRAM_API_ID", "12345")
@@ -34,7 +35,9 @@ def api_client():
     from app.main import app
     from app.db import get_db
 
-    engine = create_engine("sqlite:///:memory:", connect_args={"check_same_thread": False})
+    engine = create_engine(
+        "sqlite:///:memory:", connect_args={"check_same_thread": False}, poolclass=StaticPool
+    )
     Base.metadata.create_all(bind=engine)
     Session = sessionmaker(bind=engine)
 
