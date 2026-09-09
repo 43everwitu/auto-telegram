@@ -27,7 +27,7 @@ async def test_send_job_success_writes_log(monkeypatch):
     db = Session()
     db.add(Account(id=1, phone="1", session_string="enc", status="active"))
     db.add(Target(id=1, account_id=1, telegram_chat_id="-100", type="channel", title="T", active=True))
-    db.add(ContentTemplate(id=1, body="hello", is_override=False, target_id=None))
+    db.add(ContentTemplate(id=1, body="hello [emoji:99]\U0001F525[/emoji]", is_override=False, target_id=None))
     db.commit()
     db.close()
 

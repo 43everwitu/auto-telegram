@@ -7,6 +7,7 @@ from app.db import DATABASE_URL, SessionLocal
 from app.models import Target, SendLog, Account
 from app.schedule_gen import generate_daily_times
 from app.content import resolve_template
+from app.premium_emoji import build_message_with_entities
 
 scheduler = AsyncIOScheduler(jobstores={"default": SQLAlchemyJobStore(url=DATABASE_URL)})
 
@@ -48,8 +49,12 @@ async def send_job(target_id: int, manager, retry: bool = False):
             return
 
         try:
+            account = db.get(Account, target.account_id)
             client = manager.get_client(target.account_id)
-            await client.send_message(target.telegram_chat_id, template.body, parse_mode="html")
+            text, entities = build_message_with_entities(
+                template.body, bool(account and account.telegram_premium)
+            )
+            await client.send_message(target.telegram_chat_id, text, formatting_entities=entities or None)
             db.add(SendLog(target_id=target_id, template_id=template.id, status="success"))
         except FloodWaitError as e:
             scheduler.add_job(
@@ -61,7 +66,6 @@ async def send_job(target_id: int, manager, retry: bool = False):
                 error_message=f"FloodWait {e.seconds}s, rescheduled",
             ))
         except (UserDeactivatedBanError, AuthKeyUnregisteredError) as e:
-            account = db.get(Account, target.account_id)
             if account:
                 account.status = "banned"
             db.add(SendLog(target_id=target_id, template_id=template.id, status="failed", error_message=str(e)))
