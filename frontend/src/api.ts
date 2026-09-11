@@ -5,17 +5,24 @@ function authHeaders(): HeadersInit {
   return token ? { Authorization: `Bearer ${token}` } : {};
 }
 
-function handleUnauthorized(res: Response, path: string, method: string): void {
+async function handleUnauthorized(res: Response, path: string, method: string): Promise<void> {
   if (res.status === 401) {
     localStorage.removeItem("access_token");
     window.location.href = "/login";
   }
-  if (!res.ok) throw new Error(`${method} ${path} failed: ${res.status}`);
+  if (!res.ok) {
+    const detail = await res
+      .clone()
+      .json()
+      .then((body) => body?.detail)
+      .catch(() => undefined);
+    throw new Error(detail || `${method} ${path} failed: ${res.status}`);
+  }
 }
 
 export async function apiGet<T>(path: string): Promise<T> {
   const res = await fetch(`${API_BASE}${path}`, { headers: authHeaders() });
-  handleUnauthorized(res, path, "GET");
+  await handleUnauthorized(res, path, "GET");
   return res.json();
 }
 
@@ -25,7 +32,7 @@ export async function apiPost<T>(path: string, body: unknown): Promise<T> {
     headers: { "Content-Type": "application/json", ...authHeaders() },
     body: JSON.stringify(body),
   });
-  handleUnauthorized(res, path, "POST");
+  await handleUnauthorized(res, path, "POST");
   return res.json();
 }
 
@@ -35,13 +42,13 @@ export async function apiPut<T>(path: string, body: unknown): Promise<T> {
     headers: { "Content-Type": "application/json", ...authHeaders() },
     body: JSON.stringify(body),
   });
-  handleUnauthorized(res, path, "PUT");
+  await handleUnauthorized(res, path, "PUT");
   return res.json();
 }
 
 export async function apiDelete(path: string): Promise<void> {
   const res = await fetch(`${API_BASE}${path}`, { method: "DELETE", headers: authHeaders() });
-  handleUnauthorized(res, path, "DELETE");
+  await handleUnauthorized(res, path, "DELETE");
 }
 
 export async function login(username: string, password: string): Promise<string> {

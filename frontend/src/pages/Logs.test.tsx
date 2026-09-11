@@ -2,6 +2,7 @@ import { render, screen, waitFor } from "@testing-library/react";
 import { describe, it, expect, vi } from "vitest";
 import Logs from "./Logs";
 import * as api from "../api";
+import { LanguageProvider } from "../i18n";
 
 describe("Logs page", () => {
   it("renders send logs fetched from the API", async () => {
@@ -16,7 +17,11 @@ describe("Logs page", () => {
       }
       return { "1": { success: 1 } } as any;
     });
-    render(<Logs />);
+    render(
+      <LanguageProvider>
+        <Logs />
+      </LanguageProvider>
+    );
     await waitFor(() => {
       expect(screen.getAllByText(/success/)[0]).toBeInTheDocument();
     });

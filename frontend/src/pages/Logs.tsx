@@ -1,5 +1,6 @@
 import { useEffect, useState } from "react";
 import { apiGet } from "../api";
+import { useI18n } from "../i18n";
 
 type SendLog = {
   id: number;
@@ -13,6 +14,7 @@ type SendLog = {
 type Stats = Record<string, Record<string, number>>;
 
 export default function Logs() {
+  const { t } = useI18n();
   const [logs, setLogs] = useState<SendLog[]>([]);
   const [stats, setStats] = useState<Stats>({});
 
@@ -22,36 +24,53 @@ export default function Logs() {
   }, []);
 
   return (
-    <div>
-      <h1>Logs & Stats</h1>
-      <table>
-        <thead>
-          <tr>
-            <th>Target</th>
-            <th>Sent at</th>
-            <th>Status</th>
-            <th>Error</th>
-          </tr>
-        </thead>
-        <tbody>
-          {logs.map((l) => (
-            <tr key={l.id}>
-              <td>{l.target_id}</td>
-              <td>{l.sent_at}</td>
-              <td>{l.status}</td>
-              <td>{l.error_message ?? ""}</td>
+    <>
+      <div className="page-header">
+        <h1>{t("logs.title")}</h1>
+      </div>
+
+      <div className="card">
+        <table className="table">
+          <thead>
+            <tr>
+              <th>{t("logs.target")}</th>
+              <th>{t("logs.sentAt")}</th>
+              <th>{t("logs.status")}</th>
+              <th>{t("logs.error")}</th>
             </tr>
+          </thead>
+          <tbody>
+            {logs.map((l) => (
+              <tr key={l.id}>
+                <td>#{l.target_id}</td>
+                <td>{l.sent_at}</td>
+                <td>
+                  <span className={`badge ${l.status === "success" ? "badge-accent" : "badge-muted"}`}>
+                    {l.status}
+                  </span>
+                </td>
+                <td>{l.error_message ?? ""}</td>
+              </tr>
+            ))}
+          </tbody>
+        </table>
+      </div>
+
+      <div className="card">
+        <h2>{t("logs.statsTitle")}</h2>
+        <ul className="list">
+          {Object.entries(stats).map(([targetId, counts]) => (
+            <li key={targetId} className="list-row">
+              <span className="list-row-main">
+                {t("logs.statsRow", {
+                  id: targetId,
+                  stats: Object.entries(counts).map(([s, c]) => `${s}=${c}`).join(", "),
+                })}
+              </span>
+            </li>
           ))}
-        </tbody>
-      </table>
-      <h2>Stats by target</h2>
-      <ul>
-        {Object.entries(stats).map(([targetId, counts]) => (
-          <li key={targetId}>
-            target {targetId}: {Object.entries(counts).map(([s, c]) => `${s}=${c}`).join(", ")}
-          </li>
-        ))}
-      </ul>
-    </div>
+        </ul>
+      </div>
+    </>
   );
 }
