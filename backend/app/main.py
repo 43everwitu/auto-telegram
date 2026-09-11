@@ -33,6 +33,9 @@ def on_startup():
         schedule_all_targets_for_today, "cron", hour=0, minute=5,
         id="daily-schedule-generator", replace_existing=True,
     )
+    # Also run once immediately: a restart any time after 00:05 would otherwise leave every
+    # target with no jobs for the rest of today until the next midnight cron fires.
+    schedule_all_targets_for_today()
 
 
 @app.on_event("shutdown")

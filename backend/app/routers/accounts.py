@@ -23,7 +23,10 @@ async def otp_start(req: OtpStartRequest):
 
 @router.post("/otp/confirm", response_model=AccountOut)
 async def otp_confirm(req: OtpConfirmRequest, db: Session = Depends(get_db)):
-    return await manager.confirm_otp_login(db, req.phone, req.code, req.password)
+    try:
+        return await manager.confirm_otp_login(db, req.phone, req.code, req.password)
+    except ValueError as e:
+        raise HTTPException(status_code=400, detail=str(e))
 
 
 @router.post("/session-string", response_model=AccountOut)

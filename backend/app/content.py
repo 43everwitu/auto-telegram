@@ -1,19 +1,15 @@
 import random
 from sqlalchemy.orm import Session
-from app.models import ContentTemplate
+from app.models import ContentTemplate, TargetTemplate
 
 
 def resolve_template(db: Session, target_id: int) -> ContentTemplate:
-    overrides = (
+    templates = (
         db.query(ContentTemplate)
-        .filter(ContentTemplate.target_id == target_id, ContentTemplate.is_override.is_(True))
+        .join(TargetTemplate, TargetTemplate.template_id == ContentTemplate.id)
+        .filter(TargetTemplate.target_id == target_id)
         .all()
     )
-    if overrides:
-        return random.choice(overrides)
-
-    shared = db.query(ContentTemplate).filter(ContentTemplate.target_id.is_(None)).all()
-    if shared:
-        return random.choice(shared)
-
-    raise ValueError(f"No content template available for target {target_id}")
+    if not templates:
+        raise ValueError(f"No template assigned to target {target_id}")
+    return random.choice(templates)

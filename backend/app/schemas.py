@@ -40,6 +40,7 @@ class TargetCreate(BaseModel):
     telegram_chat_id: str
     type: str
     title: str
+    topic_id: int | None = None
 
 
 class TargetOut(TargetCreate):
@@ -50,10 +51,26 @@ class TargetOut(TargetCreate):
         from_attributes = True
 
 
+class TargetResolveRequest(BaseModel):
+    account_id: int
+    link: str
+
+
+class TargetResolveResponse(BaseModel):
+    telegram_chat_id: str
+    type: str
+    title: str
+    topic_id: int | None = None
+
+
+class TestSendResponse(BaseModel):
+    status: str
+    error_message: str | None
+    sent_at: datetime
+
+
 class TemplateCreate(BaseModel):
     body: str
-    is_override: bool = False
-    target_id: int | None = None
 
 
 class TemplateOut(TemplateCreate):
@@ -61,6 +78,19 @@ class TemplateOut(TemplateCreate):
 
     class Config:
         from_attributes = True
+
+
+class TargetTemplateAssign(BaseModel):
+    template_id: int
+
+
+class TemplateImportRequest(BaseModel):
+    account_id: int
+    message_link: str
+
+
+class TemplateImportResponse(BaseModel):
+    body: str
 
 
 class ScheduleConfigCreate(BaseModel):
@@ -84,6 +114,7 @@ class ScheduleConfigOut(BaseModel):
     window_start: str
     window_end: str
     min_gap_minutes: int
+    next_send_at: datetime | None = None
 
     class Config:
         from_attributes = True

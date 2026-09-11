@@ -1,7 +1,7 @@
 from unittest.mock import AsyncMock, patch
 import pytest
 from telethon.errors import FloodWaitError
-from app.models import Target, ScheduleConfig, ContentTemplate, Account
+from app.models import Target, ScheduleConfig, ContentTemplate, TargetTemplate, Account
 from app import scheduler as scheduler_module
 from app.scheduler import send_job
 from app.db import Base
@@ -19,6 +19,9 @@ class FakeManager:
     async def ensure_client(self, db, account_id):
         return self._client
 
+    async def resolve_send_target(self, client, chat_id):
+        return chat_id
+
 
 @pytest.mark.asyncio
 async def test_send_job_success_writes_log(monkeypatch):
@@ -30,7 +33,8 @@ async def test_send_job_success_writes_log(monkeypatch):
     db = Session()
     db.add(Account(id=1, phone="1", session_string="enc", status="active"))
     db.add(Target(id=1, account_id=1, telegram_chat_id="-100", type="channel", title="T", active=True))
-    db.add(ContentTemplate(id=1, body="hello [emoji:99]\U0001F525[/emoji]", is_override=False, target_id=None))
+    db.add(ContentTemplate(id=1, body="hello [emoji:99]\U0001F525[/emoji]"))
+    db.add(TargetTemplate(target_id=1, template_id=1))
     db.commit()
     db.close()
 
@@ -57,7 +61,8 @@ async def test_send_job_generic_error_schedules_one_retry(monkeypatch):
     db = Session()
     db.add(Account(id=1, phone="1", session_string="enc", status="active"))
     db.add(Target(id=1, account_id=1, telegram_chat_id="-100", type="channel", title="T", active=True))
-    db.add(ContentTemplate(id=1, body="hello", is_override=False, target_id=None))
+    db.add(ContentTemplate(id=1, body="hello"))
+    db.add(TargetTemplate(target_id=1, template_id=1))
     db.commit()
     db.close()
 
@@ -88,7 +93,8 @@ async def test_send_job_flood_wait_pauses_account_jobs(monkeypatch):
     db.add(Account(id=1, phone="1", session_string="enc", status="active"))
     db.add(Target(id=1, account_id=1, telegram_chat_id="-100", type="channel", title="T", active=True))
     db.add(Target(id=2, account_id=1, telegram_chat_id="-200", type="channel", title="T2", active=True))
-    db.add(ContentTemplate(id=1, body="hello", is_override=False, target_id=None))
+    db.add(ContentTemplate(id=1, body="hello"))
+    db.add(TargetTemplate(target_id=1, template_id=1))
     db.commit()
     db.close()
 

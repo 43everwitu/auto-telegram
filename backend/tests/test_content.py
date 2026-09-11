@@ -1,5 +1,5 @@
 import pytest
-from app.models import Target, ContentTemplate
+from app.models import Target, ContentTemplate, TargetTemplate
 from app.content import resolve_template
 
 
@@ -10,26 +10,33 @@ def _make_target(db_session, target_id=1):
     return target
 
 
-def test_resolve_uses_override_when_present(db_session):
+def test_resolve_uses_assigned_template(db_session):
     _make_target(db_session)
-    db_session.add(ContentTemplate(id=1, body="shared", is_override=False, target_id=None))
-    db_session.add(ContentTemplate(id=2, body="override", is_override=True, target_id=1))
+    db_session.add(ContentTemplate(id=1, body="unassigned"))
+    db_session.add(ContentTemplate(id=2, body="assigned"))
+    db_session.add(TargetTemplate(target_id=1, template_id=2))
     db_session.commit()
 
     result = resolve_template(db_session, target_id=1)
-    assert result.body == "override"
+    assert result.body == "assigned"
 
 
-def test_resolve_falls_back_to_shared_pool(db_session):
-    _make_target(db_session)
-    db_session.add(ContentTemplate(id=1, body="shared", is_override=False, target_id=None))
+def test_resolve_only_considers_this_targets_assignments(db_session):
+    _make_target(db_session, target_id=1)
+    _make_target(db_session, target_id=2)
+    db_session.add(ContentTemplate(id=1, body="for target 1"))
+    db_session.add(ContentTemplate(id=2, body="for target 2"))
+    db_session.add(TargetTemplate(target_id=1, template_id=1))
+    db_session.add(TargetTemplate(target_id=2, template_id=2))
     db_session.commit()
 
-    result = resolve_template(db_session, target_id=1)
-    assert result.body == "shared"
+    assert resolve_template(db_session, target_id=1).body == "for target 1"
+    assert resolve_template(db_session, target_id=2).body == "for target 2"
 
 
-def test_resolve_raises_when_no_template(db_session):
+def test_resolve_raises_when_no_template_assigned(db_session):
     _make_target(db_session)
+    db_session.add(ContentTemplate(id=1, body="not assigned to anyone"))
+    db_session.commit()
     with pytest.raises(ValueError):
         resolve_template(db_session, target_id=1)

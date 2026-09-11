@@ -1,4 +1,4 @@
-from app.premium_emoji import build_message_with_entities
+from app.premium_emoji import build_message_with_entities, tag_custom_emoji
 
 
 def test_premium_account_gets_custom_emoji_entity():
@@ -26,3 +26,21 @@ def test_multiple_markups():
     )
     assert text == "A mid B"
     assert [e.document_id for e in entities] == [1, 2]
+
+
+def test_tag_custom_emoji_no_entities_passthrough():
+    assert tag_custom_emoji("plain text", []) == "plain text"
+
+
+def test_tag_custom_emoji_roundtrip_single():
+    original = "Hi [emoji:123]\U0001F525[/emoji] there"
+    text, entities = build_message_with_entities(original, is_premium=True)
+    assert tag_custom_emoji(text, entities) == original
+
+
+def test_tag_custom_emoji_roundtrip_multiple_with_astral_fallback():
+    # \U0001F525 (fire) is outside the BMP and encodes as a UTF-16 surrogate pair, so this
+    # also exercises the offset math for entities positioned after a supplementary character.
+    original = "[emoji:1]\U0001F525[/emoji] mid [emoji:2]B[/emoji] end"
+    text, entities = build_message_with_entities(original, is_premium=True)
+    assert tag_custom_emoji(text, entities) == original

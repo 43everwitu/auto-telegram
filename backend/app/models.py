@@ -1,5 +1,5 @@
 from datetime import datetime
-from sqlalchemy import Column, Integer, String, Boolean, DateTime, ForeignKey, Text
+from sqlalchemy import Column, Integer, String, Boolean, DateTime, ForeignKey, Text, UniqueConstraint
 from sqlalchemy.orm import relationship, declarative_base
 
 Base = declarative_base()
@@ -23,23 +23,40 @@ class Target(Base):
     telegram_chat_id = Column(String, nullable=False)
     type = Column(String, nullable=False)  # channel|group
     title = Column(String, nullable=False)
+    topic_id = Column(Integer, nullable=True)  # forum topic (thread) id, if the group uses Topics
     active = Column(Boolean, default=True)
 
     account = relationship("Account", back_populates="targets")
-    templates = relationship("ContentTemplate", back_populates="target", cascade="all, delete-orphan")
+    template_links = relationship("TargetTemplate", back_populates="target", cascade="all, delete-orphan")
     schedule_config = relationship(
         "ScheduleConfig", back_populates="target", uselist=False, cascade="all, delete-orphan"
     )
 
 
 class ContentTemplate(Base):
+    """A reusable piece of message content. Which target(s) send it is decided entirely by
+    TargetTemplate links — a template has no opinion about how it's used."""
+
     __tablename__ = "content_templates"
     id = Column(Integer, primary_key=True)
     body = Column(Text, nullable=False)
-    is_override = Column(Boolean, default=False)
-    target_id = Column(Integer, ForeignKey("targets.id"), nullable=True)
 
-    target = relationship("Target", back_populates="templates")
+    target_links = relationship("TargetTemplate", back_populates="template", cascade="all, delete-orphan")
+
+
+class TargetTemplate(Base):
+    """Assigns a template to a target. A target rotates randomly among its assigned
+    templates when sending; the same template can be assigned to multiple targets."""
+
+    __tablename__ = "target_templates"
+    id = Column(Integer, primary_key=True)
+    target_id = Column(Integer, ForeignKey("targets.id"), nullable=False)
+    template_id = Column(Integer, ForeignKey("content_templates.id"), nullable=False)
+
+    target = relationship("Target", back_populates="template_links")
+    template = relationship("ContentTemplate", back_populates="target_links")
+
+    __table_args__ = (UniqueConstraint("target_id", "template_id", name="uq_target_template"),)
 
 
 class ScheduleConfig(Base):
