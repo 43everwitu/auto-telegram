@@ -45,7 +45,7 @@ export default function Logs() {
                 <td>#{l.target_id}</td>
                 <td>{l.sent_at}</td>
                 <td>
-                  <span className={`badge ${l.status === "success" ? "badge-accent" : "badge-muted"}`}>
+                  <span className={`badge ${l.status === "success" ? "badge-accent" : "badge-danger"}`}>
                     {l.status}
                   </span>
                 </td>

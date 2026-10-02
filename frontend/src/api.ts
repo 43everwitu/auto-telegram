@@ -46,6 +46,12 @@ export async function apiPut<T>(path: string, body: unknown): Promise<T> {
   return res.json();
 }
 
+export async function apiPatch<T>(path: string): Promise<T> {
+  const res = await fetch(`${API_BASE}${path}`, { method: "PATCH", headers: authHeaders() });
+  await handleUnauthorized(res, path, "PATCH");
+  return res.json();
+}
+
 export async function apiDelete(path: string): Promise<void> {
   const res = await fetch(`${API_BASE}${path}`, { method: "DELETE", headers: authHeaders() });
   await handleUnauthorized(res, path, "DELETE");

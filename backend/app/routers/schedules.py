@@ -52,9 +52,12 @@ def upsert_schedule(target_id: int, req: ScheduleConfigCreate, db: Session = Dep
 
     target = db.get(Target, target_id)
     if target is not None:
-        # Pick up today's remaining slots right away instead of waiting for the next
-        # midnight cron run — see schedule_target_for_today's docstring.
-        schedule_target_for_today(target)
+        try:
+            # Pick up today's remaining slots right away instead of waiting for the next
+            # midnight cron run — see schedule_target_for_today's docstring.
+            schedule_target_for_today(target)
+        except Exception as e:
+            print(f"upsert_schedule: failed to sync scheduler jobs for target {target_id}: {e}")
     return out
 
 

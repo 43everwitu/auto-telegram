@@ -13,7 +13,7 @@ from app.schemas import (
     TemplateOut,
 )
 from app.routers.accounts import manager
-from app.scheduler import send_job
+from app.scheduler import send_job, schedule_target_for_today, cancel_jobs_for_target
 
 router = APIRouter(prefix="/api/targets", tags=["targets"], dependencies=[Depends(require_admin)])
 
@@ -124,6 +124,15 @@ def set_active(target_id: int, active: bool, db: Session = Depends(get_db)):
     target.active = active
     db.commit()
     db.refresh(target)
+    try:
+        if active:
+            schedule_target_for_today(target)
+        else:
+            cancel_jobs_for_target(target_id)
+    except Exception as e:
+        # Best-effort scheduler sync — a jobstore hiccup shouldn't fail the active toggle
+        # itself; the next daily cron run (or another toggle) will reconcile jobs anyway.
+        print(f"set_active: failed to sync scheduler jobs for target {target_id}: {e}")
     return target
 
 

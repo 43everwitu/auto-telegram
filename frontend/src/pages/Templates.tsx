@@ -163,7 +163,7 @@ export default function Templates() {
 
       <div className="form">
         {templates.map((tpl) => (
-          <div key={tpl.id} className="card">
+          <div key={tpl.id} className="card-soft">
             <span className="hint">#{tpl.id}</span>
             <TelegramPreview body={tpl.body} />
             <div className="form-row" style={{ flex: "0 0 auto" }}>

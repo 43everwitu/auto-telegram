@@ -181,15 +181,26 @@ export default function Accounts() {
       </div>
 
       <ul className="list">
-        {accounts.map((a) => (
-          <li key={a.id} className="list-row">
-            <span className="list-row-main">
-              {a.phone} — {a.status}{" "}
-              {a.telegram_premium && <span className="badge badge-accent">{t("accounts.premium")}</span>}
-            </span>
-            <button className="btn btn-danger" onClick={() => handleDelete(a.id)}>{t("accounts.delete")}</button>
-          </li>
-        ))}
+        {accounts.map((a) => {
+          const isActive = a.status === "active";
+          const isBanned = a.status === "banned";
+          return (
+            <li
+              key={a.id}
+              className={`card-soft${isActive ? " is-running" : ""}${isBanned ? " is-error" : ""}`}
+              style={{ flexDirection: "row", alignItems: "center", justifyContent: "space-between" }}
+            >
+              <span className="list-row-main">
+                {a.phone}{" "}
+                <span className={`badge ${isBanned ? "badge-danger" : isActive ? "badge-accent" : "badge-muted"}`}>
+                  {a.status}
+                </span>{" "}
+                {a.telegram_premium && <span className="badge badge-accent">{t("accounts.premium")}</span>}
+              </span>
+              <button className="btn btn-danger" onClick={() => handleDelete(a.id)}>{t("accounts.delete")}</button>
+            </li>
+          );
+        })}
       </ul>
     </>
   );

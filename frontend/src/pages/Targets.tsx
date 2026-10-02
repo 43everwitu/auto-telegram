@@ -1,6 +1,6 @@
 import { useEffect, useState, FormEvent } from "react";
 import { Link } from "react-router-dom";
-import { apiGet, apiPost, apiPut, apiDelete } from "../api";
+import { apiGet, apiPost, apiPut, apiPatch, apiDelete } from "../api";
 import TelegramPreview from "../TelegramPreview";
 import { useI18n } from "../i18n";
 
@@ -136,6 +136,16 @@ export default function Targets() {
       await refresh();
     } catch {
       setError(t("targets.err.delete"));
+    }
+  }
+
+  async function handleToggleActive(id: number, nextActive: boolean) {
+    try {
+      await apiPatch(`/api/targets/${id}/active?active=${nextActive}`);
+      setError(null);
+      await refresh();
+    } catch {
+      setError(t("schedules.err.toggle"));
     }
   }
 
@@ -282,7 +292,7 @@ export default function Targets() {
           const attachable = allTemplates.filter((tpl) => !ownTemplates.some((o) => o.id === tpl.id));
           const expanded = expandedTarget === t2.id;
           return (
-            <li key={t2.id} className="card-soft">
+            <li key={t2.id} className={`card-soft${t2.active ? " is-running" : ""}`}>
               <div className="page-header">
                 <div>
                   <div className="list-row-main">
@@ -290,12 +300,24 @@ export default function Targets() {
                     <span className="badge badge-muted">
                       {t2.type === "channel" ? t("targets.form.type.channel") : t("targets.form.type.group")}
                     </span>{" "}
-                    <span className={`badge ${t2.active ? "badge-accent" : "badge-muted"}`}>
-                      {t2.active ? t("targets.active") : t("targets.inactive")}
-                    </span>{" "}
                     {t2.topic_id !== null && (
                       <span className="badge badge-muted">{t("targets.topic", { id: t2.topic_id })}</span>
                     )}
+                  </div>
+                  <div className="toggle-row" style={{ marginTop: "var(--space-xxs)" }}>
+                    <span className={`toggle-label ${t2.active ? "is-on" : "is-off"}`}>
+                      {t2.active ? t("schedules.running") : t("schedules.paused")}
+                    </span>
+                    <button
+                      type="button"
+                      role="switch"
+                      aria-checked={t2.active}
+                      className="toggle"
+                      onClick={() => handleToggleActive(t2.id, !t2.active)}
+                      title={t2.active ? t("schedules.pause") : t("schedules.resume")}
+                    >
+                      <span className="toggle-knob" />
+                    </button>
                   </div>
                   <p className="hint" style={{ margin: 0 }}>
                     {t("targets.account")} <strong>{accountLabel(t2.account_id)}</strong> · chat_id{" "}

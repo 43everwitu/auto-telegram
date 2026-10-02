@@ -145,6 +145,17 @@ a {
   display: flex;
   flex-direction: column;
   gap: var(--space-md);
+  border: 1px solid transparent;
+}
+
+.card-soft.is-running {
+  background: rgba(0, 102, 255, 0.06);
+  border-color: rgba(0, 102, 255, 0.18);
+}
+
+.card-soft.is-error {
+  background: rgba(192, 57, 43, 0.06);
+  border-color: rgba(192, 57, 43, 0.18);
 }
 
 /* Forms */
@@ -316,6 +327,11 @@ textarea.input {
   color: var(--ink-soft);
 }
 
+.badge-danger {
+  background: rgba(192, 57, 43, 0.12);
+  color: var(--danger);
+}
+
 table.table {
   width: 100%;
   border-collapse: collapse;
@@ -411,6 +427,60 @@ table.table th:last-child {
   background: var(--text-faint);
   color: transparent;
   border-radius: 3px;
+}
+
+/* Toggle switch */
+
+.toggle-row {
+  display: inline-flex;
+  align-items: center;
+  gap: var(--space-xs);
+}
+
+.toggle-label {
+  font-size: 14px;
+  font-weight: 600;
+}
+
+.toggle-label.is-on {
+  color: var(--accent);
+}
+
+.toggle-label.is-off {
+  color: var(--text-muted);
+}
+
+.toggle {
+  position: relative;
+  width: 42px;
+  height: 24px;
+  padding: 0;
+  border: none;
+  border-radius: var(--radius-full);
+  background: var(--hairline);
+  cursor: pointer;
+  flex-shrink: 0;
+  transition: background-color 0.15s ease;
+}
+
+.toggle[aria-checked="true"] {
+  background: var(--accent);
+}
+
+.toggle-knob {
+  position: absolute;
+  top: 2px;
+  left: 2px;
+  width: 20px;
+  height: 20px;
+  border-radius: 50%;
+  background: var(--canvas);
+  box-shadow: 0 1px 2px rgba(0, 0, 0, 0.25);
+  transition: transform 0.15s ease;
+}
+
+.toggle[aria-checked="true"] .toggle-knob {
+  transform: translateX(18px);
 }
 
 /* Auth */

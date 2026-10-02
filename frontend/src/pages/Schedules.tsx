@@ -1,5 +1,5 @@
 import { useEffect, useState, FormEvent } from "react";
-import { apiGet, apiPut, apiPost, apiDelete } from "../api";
+import { apiGet, apiPut, apiPost, apiPatch, apiDelete } from "../api";
 import { useI18n, TKey } from "../i18n";
 
 type ScheduleConfig = {
@@ -63,6 +63,22 @@ export default function Schedules() {
   function targetLabel(id: number): string {
     const target = targets.find((x) => x.id === id && x.title);
     return target ? `${target.title} (${target.type})` : `#${id}`;
+  }
+
+  function isTargetActive(id: number): boolean {
+    const target = targets.find((x) => x.id === id);
+    return target ? target.active : true;
+  }
+
+  async function handleToggleActive(target_id: number, nextActive: boolean) {
+    try {
+      await apiPatch(`/api/targets/${target_id}/active?active=${nextActive}`);
+      setError(null);
+      apiGet<Target[]>("/api/targets").then(setTargets);
+      await refresh();
+    } catch {
+      setError(t("schedules.err.toggle"));
+    }
   }
 
   function resetForm() {
@@ -241,14 +257,30 @@ export default function Schedules() {
       <ul className="list">
         {schedules.map((s) => {
           const relative = formatRelative(s.next_send_at, t);
+          const active = isTargetActive(s.target_id);
           return (
-            <li key={s.id} className="card-soft">
+            <li key={s.id} className={`card-soft${active ? " is-running" : ""}`}>
               <div className="page-header">
                 <span className="list-row-main">
                   <strong>{targetLabel(s.target_id)}</strong>{" "}
                   <span className="badge badge-muted">#{s.target_id}</span>
                 </span>
-                <div className="form-row" style={{ flex: "0 0 auto" }}>
+                <div className="form-row" style={{ flex: "0 0 auto", alignItems: "center" }}>
+                  <div className="toggle-row">
+                    <span className={`toggle-label ${active ? "is-on" : "is-off"}`}>
+                      {active ? t("schedules.running") : t("schedules.paused")}
+                    </span>
+                    <button
+                      type="button"
+                      role="switch"
+                      aria-checked={active}
+                      className="toggle"
+                      onClick={() => handleToggleActive(s.target_id, !active)}
+                      title={active ? t("schedules.pause") : t("schedules.resume")}
+                    >
+                      <span className="toggle-knob" />
+                    </button>
+                  </div>
                   <button
                     className="btn btn-outline"
                     disabled={testingId !== null}
@@ -265,7 +297,7 @@ export default function Schedules() {
                 <span className="badge badge-muted">{s.window_start}–{s.window_end}</span>
                 <span className="badge badge-muted">{t("schedules.gap", { minutes: s.min_gap_minutes })}</span>
                 <span className="badge badge-accent">
-                  {relative ? t("schedules.nextSend", { time: relative }) : t("schedules.nextSendNone")}
+                  {active && relative ? t("schedules.nextSend", { time: relative }) : t("schedules.nextSendNone")}
                 </span>
               </div>
               {renderTestResult(s.target_id)}

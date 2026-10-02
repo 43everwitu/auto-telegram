@@ -134,6 +134,35 @@ def test_schedule_all_targets_creates_jobs(monkeypatch):
         assert add_job_mock.call_count <= 1  # 0 if the random slot already passed today, else 1
 
 
+def test_schedule_target_for_today_idempotent_same_day(monkeypatch):
+    # Regression: schedule_target_for_today runs on every app startup AND every schedule
+    # upsert. Before the deterministic seed, each call re-rolled brand new random times for
+    # every slot — including ones that had already fired and been removed from the job
+    # store — silently scheduling extra sends beyond messages_per_day for the same day.
+    engine = create_engine("sqlite:///:memory:", connect_args={"check_same_thread": False})
+    Base.metadata.create_all(bind=engine)
+    Session = sessionmaker(bind=engine)
+    monkeypatch.setattr(scheduler_module, "SessionLocal", Session)
+
+    db = Session()
+    target = Target(id=1, account_id=1, telegram_chat_id="-100", type="channel", title="T", active=True)
+    target.schedule_config = ScheduleConfig(
+        target_id=1, messages_per_day=5, window_start="00:00", window_end="23:59", min_gap_minutes=1,
+    )
+    db.add(target)
+    db.commit()
+    db.refresh(target)
+
+    with patch.object(scheduler_module.scheduler, "add_job") as add_job_mock:
+        scheduler_module.schedule_target_for_today(target)
+        first_calls = list(add_job_mock.call_args_list)
+        add_job_mock.reset_mock()
+        scheduler_module.schedule_target_for_today(target)
+        second_calls = list(add_job_mock.call_args_list)
+
+    assert first_calls == second_calls
+
+
 def test_schedule_all_targets_skips_bad_config_and_continues(monkeypatch):
     # I1 regression: one target's bad schedule config must not abort scheduling
     # for other targets.

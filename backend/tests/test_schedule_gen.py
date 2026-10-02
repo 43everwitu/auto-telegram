@@ -36,6 +36,24 @@ def test_zero_messages_returns_empty_list():
     assert generate_daily_times(0, "08:00", "22:00", 30, date(2026, 9, 10)) == []
 
 
+def test_same_seed_is_deterministic():
+    # Re-running with the same seed must reproduce the exact same times — this is what
+    # makes schedule_target_for_today idempotent when called more than once on the same
+    # day (app restart, schedule edit), instead of re-rolling and re-scheduling slots
+    # that already fired earlier that day.
+    day = date(2026, 9, 10)
+    a = generate_daily_times(5, "08:00", "22:00", 30, day, seed=42)
+    b = generate_daily_times(5, "08:00", "22:00", 30, day, seed=42)
+    assert a == b
+
+
+def test_different_seed_differs():
+    day = date(2026, 9, 10)
+    a = generate_daily_times(5, "08:00", "22:00", 30, day, seed=1)
+    b = generate_daily_times(5, "08:00", "22:00", 30, day, seed=2)
+    assert a != b
+
+
 def test_plausible_config_always_succeeds():
     # 10 posts/day, >=60min apart, 08:00-22:00 window: pre-check passes
     # (14h = 840min window, need (10-1)*60 = 540min of gap capacity), so

@@ -19,9 +19,11 @@ def schedule_target_for_today(target: Target) -> None:
     config = target.schedule_config
     if config is None or not target.active:
         return
+    today = date.today()
+    seed = target.id * 1_000_000 + today.toordinal()
     times = generate_daily_times(
         config.messages_per_day, config.window_start, config.window_end,
-        config.min_gap_minutes, date.today(),
+        config.min_gap_minutes, today, seed=seed,
     )
     for i, run_time in enumerate(times):
         if run_time < datetime.now():
@@ -29,7 +31,7 @@ def schedule_target_for_today(target: Target) -> None:
         scheduler.add_job(
             send_job, "date", run_date=run_time,
             args=[target.id],
-            id=f"send-{target.id}-{date.today()}-{i}",
+            id=f"send-{target.id}-{today}-{i}",
             replace_existing=True,
         )
 
@@ -47,14 +49,18 @@ def schedule_all_targets_for_today():
         db.close()
 
 
+def cancel_jobs_for_target(target_id: int):
+    prefix = f"send-{target_id}-"
+    for job in scheduler.get_jobs():
+        if job.id.startswith(prefix):
+            scheduler.remove_job(job.id)
+
+
 def cancel_jobs_for_account(db, account_id):
     try:
         targets = db.query(Target).filter(Target.account_id == account_id).all()
         for target in targets:
-            prefix = f"send-{target.id}-"
-            for job in scheduler.get_jobs():
-                if job.id.startswith(prefix):
-                    scheduler.remove_job(job.id)
+            cancel_jobs_for_target(target.id)
     except Exception as e:
         print(f"cancel_jobs_for_account: failed to cancel jobs for account {account_id}: {e}")
 
